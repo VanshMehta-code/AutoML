@@ -71,7 +71,11 @@ Training time is capped by `search.time_budget_seconds` (default 900 s). Lower i
 automl predict --model artifacts/run1/model.joblib --data data/new_rows.csv --out preds.csv
 ```
 
-The output has one column per class with its probability. The target column is optional in the input file and is ignored if present.
+For classification the output has one column per class with its probability. For regression it has one `prediction` column. The target column is optional in the input file and is ignored if present.
+
+If the target is a continuous number, the task is detected as regression automatically. Force it with `--task regression` if needed.
+
+Leaky columns are dropped automatically. The training log shows what was removed and why. To see the effect of a leak, compare a run with `--keep-leaky`.
 
 ## 7. Serve predictions over HTTP
 

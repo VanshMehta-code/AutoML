@@ -1,7 +1,7 @@
 """The fitted model artifact: everything inference needs, in one serialisable object.
 
 Inference path: raw DataFrame -> schema check -> Preprocessor -> feature mask
--> weighted sum of ensemble members' probabilities.
+-> weighted sum of ensemble members' outputs.
 """
 
 from __future__ import annotations
@@ -17,7 +17,8 @@ import pandas as pd
 @dataclass
 class FittedModel:
     preprocessor: object
-    classes: np.ndarray
+    task: str
+    classes: np.ndarray | None  # None for regression
     mask: np.ndarray
     members: list
     weights: np.ndarray
@@ -30,13 +31,22 @@ class FittedModel:
         if missing:
             raise ValueError(f"Input is missing required columns: {missing}")
 
-    def predict_proba(self, df: pd.DataFrame) -> np.ndarray:
+    def _transform(self, df: pd.DataFrame) -> np.ndarray:
         self.check_input(df)
-        X = self.preprocessor.transform(df[self.input_columns])[:, self.mask]
+        return self.preprocessor.transform(df[self.input_columns])[:, self.mask]
+
+    def predict_proba(self, df: pd.DataFrame) -> np.ndarray:
+        if self.task == "regression":
+            raise ValueError("predict_proba is only for classification; use predict() for regression.")
+        X = self._transform(df)
         return sum(w * m.predict_proba(X) for w, m in zip(self.weights, self.members))
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        return self.classes[self.predict_proba(df).argmax(axis=1)]
+        X = self._transform(df)
+        if self.task == "regression":
+            return sum(w * m.predict(X) for w, m in zip(self.weights, self.members))
+        proba = sum(w * m.predict_proba(X) for w, m in zip(self.weights, self.members))
+        return self.classes[proba.argmax(axis=1)]
 
     def save(self, path: str | Path) -> None:
         joblib.dump(self, path)

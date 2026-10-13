@@ -7,6 +7,16 @@ from pathlib import Path
 
 import yaml
 
+TASKS = ("auto", "binary", "multiclass", "regression")
+LEAK_ACTIONS = ("drop", "warn")
+
+
+@dataclass
+class LeakageConfig:
+    action: str = "drop"          # drop: remove flagged columns; warn: report only
+    threshold: float = 0.95       # single-column score at or above this is a leak
+    warn_threshold: float = 0.85  # at or above this (but below threshold): review manually
+
 
 @dataclass
 class CleaningConfig:
@@ -17,7 +27,7 @@ class CleaningConfig:
 
 @dataclass
 class SearchConfig:
-    families: list[str] = field(default_factory=lambda: ["hgb", "rf", "logreg"])
+    families: list[str] = field(default_factory=lambda: ["hgb", "rf", "logreg", "ridge", "mlp"])
     population: int = 16
     generations: int = 4
     elite: int = 4
@@ -36,24 +46,37 @@ class SearchConfig:
 @dataclass
 class Config:
     target: str | None = None
+    task: str = "auto"
+    drop_columns: list[str] = field(default_factory=list)
     seed: int = 42
     test_size: float = 0.2
     cv_folds: int = 5
+    leakage: LeakageConfig = field(default_factory=LeakageConfig)
     cleaning: CleaningConfig = field(default_factory=CleaningConfig)
     search: SearchConfig = field(default_factory=SearchConfig)
+
+    def __post_init__(self) -> None:
+        if self.task not in TASKS:
+            raise ValueError(f"task must be one of {TASKS}, got '{self.task}'")
+        if self.leakage.action not in LEAK_ACTIONS:
+            raise ValueError(f"leakage.action must be one of {LEAK_ACTIONS}, got '{self.leakage.action}'")
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "Config":
         raw = yaml.safe_load(Path(path).read_text()) or {}
-        allowed = {"target", "seed", "test_size", "cv_folds", "cleaning", "search"}
+        allowed = {"target", "task", "drop_columns", "seed", "test_size", "cv_folds",
+                   "leakage", "cleaning", "search"}
         unknown = set(raw) - allowed
         if unknown:
             raise ValueError(f"Unknown config key(s): {sorted(unknown)}. Allowed: {sorted(allowed)}")
         return cls(
             target=raw.get("target"),
+            task=raw.get("task", "auto"),
+            drop_columns=raw.get("drop_columns", []) or [],
             seed=raw.get("seed", 42),
             test_size=raw.get("test_size", 0.2),
             cv_folds=raw.get("cv_folds", 5),
+            leakage=LeakageConfig(**raw.get("leakage", {})),
             cleaning=CleaningConfig(**raw.get("cleaning", {})),
             search=SearchConfig(**raw.get("search", {})),
         )

@@ -36,6 +36,35 @@ Kind assignment, in order:
 
 Dataset-level: row and feature counts, task (`binary` or `multiclass`), class balance, and the smallest class share.
 
+## Stage 2b: Task detection, drops and leakage screening
+
+**Task detection** (`detect_task`). `task: auto` picks the task from the target:
+
+| Target | Task |
+|---|---|
+| Numeric with 21 or more distinct values | `regression` |
+| Exactly 2 distinct values | `binary` |
+| 3 to 20 distinct values, or any non-numeric with 3+ levels | `multiclass` |
+
+Override with `task:` in the config or `--task` on the command line. A numeric target with few distinct values (such as 1–5 ratings) is classified, not regressed, unless you force `--task regression`.
+
+**Declared drops.** Columns listed in `drop_columns` are removed first. Use this for fields you know are only available after the outcome.
+
+**Leakage screen** (`leakage.py`). Each remaining feature is scored alone with a depth-3 tree, using 3-fold cross-validation on training rows:
+
+- score ≥ `leakage.threshold` (default 0.95): **flagged** and dropped when `action: drop`
+- score ≥ `leakage.warn_threshold` (default 0.85) but below the threshold: listed as **review manually**, never dropped automatically
+
+The screen is statistical. It catches features that nearly *are* the target. It does **not** catch:
+
+- a leak that is only moderately strong on its own (a category label computed from the target, for example, can score around 0.8 against a regression target)
+- a leak that is only meaningful combined with other columns
+- a strong feature that is legitimately known in advance but looks suspicious
+
+For those, read the dataset documentation and use `drop_columns`. The report lists every score, so you can check the screen's judgement.
+
+The comparison `--keep-leaky` sets `action: warn`, which reports the same flags but keeps the columns. Running both shows how much the leak inflates the score.
+
 ## Stage 3: Cleaning and encoding
 
 `cleaning.py` provides `Preprocessor`, a single scikit-learn-style estimator that fits on training data and transforms any data the same way.

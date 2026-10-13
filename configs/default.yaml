@@ -1,10 +1,17 @@
-# Default configuration. Every key here maps to a field in src/automl/config.py.
+# Default configuration. Every key maps to a field in src/automl/config.py.
 # See docs/05_configuration.md for what each value does and how to tune it.
 
 target: null          # column to predict; can also be passed as --target on the CLI
+task: auto            # auto | binary | multiclass | regression
+drop_columns: []      # columns to remove by name, e.g. fields known only after the outcome
 seed: 42
 test_size: 0.2        # fraction of rows held out for the final, untouched test score
 cv_folds: 5
+
+leakage:
+  action: drop          # drop: remove flagged columns; warn: report only
+  threshold: 0.95       # a column that alone predicts the target this well is flagged as a leak
+  warn_threshold: 0.85  # at or above this (but below threshold): listed for manual review
 
 cleaning:
   outlier_k: 3.0              # winsorise numeric values beyond k * IQR (fit on train only)
@@ -12,7 +19,7 @@ cleaning:
   redundancy_threshold: 0.95  # drop a feature if |Spearman| with a more relevant one >= this
 
 search:
-  families: [hgb, rf, logreg]
+  families: [hgb, rf, logreg, ridge, mlp]  # logreg = classification only, ridge = regression only
   population: 16
   generations: 4
   elite: 4

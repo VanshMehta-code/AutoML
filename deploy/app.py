@@ -15,18 +15,24 @@ from automl.model import FittedModel
 MODEL_PATH = os.environ.get("MODEL_PATH", "artifacts/model.joblib")
 model = FittedModel.load(MODEL_PATH)
 
-app = FastAPI(title="AutoML predictor", version=model.report.get("task", "unknown"))
+app = FastAPI(title="AutoML predictor", version="0.1.0")
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "classes": [str(c) for c in model.classes]}
+    info = {"status": "ok", "task": model.task}
+    if model.classes is not None:
+        info["classes"] = [str(c) for c in model.classes]
+    return info
 
 
 @app.post("/predict")
 def predict(records: list[dict]) -> dict:
     try:
-        proba = model.predict_proba(pd.DataFrame(records))
+        df = pd.DataFrame(records)
+        if model.task == "regression":
+            return {"predictions": model.predict(df).tolist()}
+        return {"classes": [str(c) for c in model.classes],
+                "probabilities": model.predict_proba(df).tolist()}
     except ValueError as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
-    return {"classes": [str(c) for c in model.classes], "probabilities": proba.tolist()}

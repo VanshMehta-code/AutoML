@@ -20,13 +20,17 @@ def main(argv: list[str] | None = None) -> None:
     train = sub.add_parser("train", help="Search for a model and save it")
     train.add_argument("--data", required=True, help="Path to a CSV file")
     train.add_argument("--target", help="Target column (overrides the config file)")
+    train.add_argument("--task", choices=["auto", "binary", "multiclass", "regression"],
+                       help="Task type (default: auto-detect)")
     train.add_argument("--config", default="configs/default.yaml")
     train.add_argument("--out", default="artifacts", help="Output directory")
+    train.add_argument("--keep-leaky", action="store_true",
+                       help="Report leaky columns but do not drop them (for comparison runs)")
 
     predict = sub.add_parser("predict", help="Score a CSV with a saved model")
     predict.add_argument("--model", required=True, help="Path to model.joblib")
     predict.add_argument("--data", required=True, help="Path to a CSV file (target column optional)")
-    predict.add_argument("--out", help="Write probabilities to this CSV (default: stdout)")
+    predict.add_argument("--out", help="Write results to this CSV (default: stdout)")
 
     args = parser.parse_args(argv)
 
@@ -34,18 +38,29 @@ def main(argv: list[str] | None = None) -> None:
         cfg = Config.from_yaml(args.config)
         if args.target:
             cfg.target = args.target
+        if args.task:
+            cfg.task = args.task
+        if args.keep_leaky:
+            cfg.leakage.action = "warn"
+        cfg.__post_init__()
+
         automl = AutoML(cfg).fit(pd.read_csv(args.data))
 
         out = Path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         automl.model_.save(out / "model.joblib")
         (out / "report.json").write_text(json.dumps(automl.model_.report, indent=2, default=str))
-        print(f"Saved model and report to {out}/")
+        automl.train_raw_.to_csv(out / "train_split.csv", index=False)
+        automl.test_raw_.to_csv(out / "test_split.csv", index=False)
+        print(f"Saved model, report and splits to {out}/")
 
     elif args.cmd == "predict":
         model = FittedModel.load(args.model)
-        proba = model.predict_proba(pd.read_csv(args.data))
-        result = pd.DataFrame(proba, columns=[str(c) for c in model.classes])
+        df = pd.read_csv(args.data)
+        if model.task == "regression":
+            result = pd.DataFrame({"prediction": model.predict(df)})
+        else:
+            result = pd.DataFrame(model.predict_proba(df), columns=[str(c) for c in model.classes])
         if args.out:
             result.to_csv(args.out, index=False)
         else:

@@ -37,7 +37,7 @@ Endpoints:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/health` | Liveness check. Returns the class labels the model knows |
-| POST | `/predict` | Body: a JSON list of records (objects with the input columns). Returns class probabilities |
+| POST | `/predict` | Body: a JSON list of records (objects with the input columns). Classification returns `probabilities` per class; regression returns `predictions` |
 
 Input rows need the columns listed in `FittedModel.input_columns`. Extra columns are ignored. Missing columns return HTTP 422 with the names of the missing columns.
 

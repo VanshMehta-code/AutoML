@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from scipy.stats import rankdata
-from sklearn.feature_selection import mutual_info_classif
+from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
 
 @dataclass
@@ -25,11 +25,8 @@ class FeatureGraph:
     def top_edges(self, k: int = 10) -> list[tuple[str, str, float]]:
         """The k most redundant feature pairs, for reporting."""
         p = len(self.names)
-        pairs = [
-            (self.names[i], self.names[j], float(self.redundancy[i, j]))
-            for i in range(p)
-            for j in range(i + 1, p)
-        ]
+        pairs = [(self.names[i], self.names[j], float(self.redundancy[i, j]))
+                 for i in range(p) for j in range(i + 1, p)]
         return sorted(pairs, key=lambda t: -t[2])[:k]
 
 
@@ -37,10 +34,14 @@ def build_feature_graph(
     X: np.ndarray,
     y: np.ndarray,
     names: list[str],
+    task: str = "binary",
     seed: int = 0,
     redundancy_threshold: float = 0.95,
 ) -> FeatureGraph:
-    mi = mutual_info_classif(X, y, discrete_features="auto", random_state=seed)
+    if task == "regression":
+        mi = mutual_info_regression(X, y, discrete_features="auto", random_state=seed)
+    else:
+        mi = mutual_info_classif(X, y, discrete_features="auto", random_state=seed)
     relevance = mi / mi.max() if mi.max() > 0 else np.zeros_like(mi)
 
     p = X.shape[1]
@@ -54,7 +55,7 @@ def build_feature_graph(
         np.fill_diagonal(corr, 0.0)
 
     drop = np.zeros(len(names), dtype=bool)
-    for i in np.argsort(-relevance):  # visit most relevant first; it survives its pairs
+    for i in np.argsort(-relevance):  # most relevant first; it survives its pairs
         if drop[i]:
             continue
         for j in np.flatnonzero(corr[i] >= redundancy_threshold):

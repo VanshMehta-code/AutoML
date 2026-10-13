@@ -143,3 +143,44 @@ Format: **Context** (why the question came up), **Decision**, **Consequences** (
 **Decision.** Each module has a short docstring stating its purpose and the key rule it enforces. Explanations live in `docs/`, each file answering one kind of question.
 
 **Consequences.** Docs can be read without opening code. When behaviour changes, the docs must change too. Treat a doc that disagrees with the code as a bug.
+
+---
+
+### D-015: Task type is detected from the target, and can be overridden
+
+**Context.** A numeric target can be a continuous value (regression) or a coded category (classification). Guessing wrong produces meaningless metrics.
+
+**Decision.** Numeric targets with 21 or more distinct values are regression. Otherwise the task is binary or multiclass by class count. `task:` in the config or `--task` overrides detection and is validated against the data.
+
+**Consequences.** Works for common cases without configuration. A numeric category with many codes can be misread, so the override exists. The report always states the task used.
+
+---
+
+### D-016: Leakage is screened automatically and dropped by default
+
+**Context.** A column computed from the outcome makes validation scores close to perfect, and the model then fails in production. Relying on people to spot these leads to missed leaks, which is how the diabetes run went wrong.
+
+**Decision.** Each feature is scored alone on training rows. A score at or above 0.95 is dropped by default. Scores from 0.85 to 0.95 are only reported. Manual drops go in `drop_columns`.
+
+**Consequences.** The common, obvious leak is caught without a person looking. The screen cannot catch moderate or combination leaks (shown in the regression run, where a label derived from the target scored 0.79). Those rely on the report and on manual review. Both `drop` and `warn` modes exist so the effect of a leak can be measured.
+
+---
+
+### D-017: Neural network via scikit-learn's MLP
+
+**Context.** The project needs a neural network family, but adding PyTorch brings a heavy dependency and GPU concerns for tabular data.
+
+**Decision.** `mlp` uses scikit-learn's MLPClassifier and MLPRegressor, with a single hidden layer and a scaled input.
+
+**Consequences.** Simple install and deployment, and it is searched like any other family. It is not competitive with gradient boosting on large tabular data in general, and it does not scale to deep architectures. A PyTorch family would be a separate, later decision.
+
+---
+
+### D-018: Train and test scores are both reported, with their gap
+
+**Context.** A single test score does not show whether the model memorised the training data or whether the search overfit.
+
+**Decision.** The report includes the train score, the test score, and their difference (`train_test_gap`). The raw train and test splits are saved next to the model.
+
+**Consequences.** Overfitting is visible at a glance. A large gap is a warning to act on (see [07 Evaluation](07_evaluation.md#overfitting-to-the-search)). Saving the splits lets you rerun checks on exactly the data the model was evaluated on.
+

@@ -18,7 +18,10 @@ What is built, what is partial, and what is planned, in priority order. Status i
 | HTTP service | Implemented | No authentication yet |
 | Binary classification | Tested | Covered by the test suite |
 | Multiclass classification | Tested | One end-to-end test; broader coverage is step 1 below |
-| Regression | Planned | Not supported |
+| Regression | Implemented | Ridge, gradient boosting, random forest and MLP regressors; scored by R² |
+| Automatic leakage screening | Implemented | Single-feature screen, drops at 0.95 by default. Moderate and combination leaks still need review |
+| Neural network family | Implemented | scikit-learn MLP (one hidden layer); not deep learning |
+| Train/test gap reporting | Implemented | Reported with saved splits |
 | Preprocessing fitted inside each CV fold | Planned | Removes the small CV optimism |
 | Gradient boosting families (LightGBM, XGBoost) | Planned | |
 | Genetic programming for feature generation | Planned | Evolve features such as ratios and logs |
@@ -38,6 +41,8 @@ What is built, what is partial, and what is planned, in priority order. Status i
 - Extend the multiclass tests: check every family trains and scores correctly on 3+ classes, and that ACO works on multiclass data.
 - Run the ablation table from [07 Evaluation](07_evaluation.md#ablation-does-each-component-earn-its-place) on two or three real datasets. This tells us whether ACO and the graph earn their cost. Nothing else should be built on them until this is known.
 - Add config range validation (`eta ≥ 2`, `elite ≤ population`, `0 < test_size < 1`).
+- Test the leakage screen on a real dataset with a known leak, and measure how often it misses one.
+- Add a leakage check against the *target itself*: flag any feature that is a deterministic function of the target (for example a category derived from a regression target).
 
 ### 2. Make CV scores honest
 

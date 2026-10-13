@@ -47,7 +47,14 @@ Only promoted candidates produce the full-data scores used for ranking and the e
 | `rf` (RandomForestClassifier) | `max_depth` (3–20), `min_samples_leaf` (1–20), `max_features` (0.2–1.0) |
 | `logreg` (LogisticRegression, scaled) | `C` (log, 1e-3–1e2) |
 
+| `ridge` (Ridge, scaled), regression only | `alpha` (log, 1e-3–1e3) |
+| `mlp` (scikit-learn MLPClassifier / MLPRegressor, scaled), a one-hidden-layer neural network | `hidden` width (16–128), `alpha` (L2, log), `learning_rate_init` (log) |
+
+`logreg` is classification-only and `ridge` is regression-only. `families_for()` filters the configured list down to the families that support the detected task, and fails if none do.
+
 Fixed settings (not searched) are in the same registry entry, for example `max_iter` and `random_state`.
+
+**Neural network note.** `mlp` is a small feed-forward network trained with scikit-learn. It is a real neural network, but not deep learning. PyTorch-based models are a possible later addition (see [09 Roadmap](09_roadmap.md)).
 
 **Why evolution here:** the space mixes integers, continuous values, log scales and conditional families. Evolution handles that without gradients, and crossover tends to combine good settings found in different branches.
 

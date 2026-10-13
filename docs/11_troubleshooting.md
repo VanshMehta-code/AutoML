@@ -44,6 +44,23 @@ Column kinds are inferred. A numeric code stored as text may parse as dates, or 
 **Dates are not recognised**
 Detection requires at least 90% of sampled values to parse as dates. Mixed or unusual formats fall below that. Convert to ISO format (`2024-03-15`) before training.
 
+## Task and leakage
+
+**`task=regression needs a numeric target column`**
+You asked for regression on a text or category column. Use `--task multiclass` for categories, or pick a numeric column.
+
+**`task=binary needs exactly 2 classes` / `task=multiclass needs at least 3 classes`**
+The forced task does not match the number of distinct target values. Remove `--task`, or correct the value.
+
+**Test score near 1.0 with a leak warning**
+The screen flagged a column but `action` was `warn`, so it was kept. Remove `--keep-leaky` (or set `leakage.action: drop`) and rerun.
+
+**Leak warning but no flagged column, scores still implausibly high**
+The leak is moderate or only appears in combination. Look at the `leak_scores` in `report.json`, decide whether any column is known only after the outcome, and add it to `drop_columns`.
+
+**`drop_columns not in data, ignored`**
+A name in `drop_columns` does not match a column in the training data. Names are case-sensitive.
+
 ## Training
 
 **`RuntimeError: Search produced no results; increase time_budget_seconds.`**

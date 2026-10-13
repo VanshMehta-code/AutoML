@@ -13,6 +13,23 @@ Unknown keys are rejected with an error, so a typo such as `generatons` fails im
 | `test_size` | `0.2` | 0.05–0.4 | Share of rows held out for the final honest score. Smaller gives more training data but a noisier test score |
 | `cv_folds` | `5` | 3–10 | Folds for cross-validated scoring during search. More folds means less noisy scores and slower search |
 
+## Task, drops and leakage
+
+| Key | Default | Range | What it does |
+|---|---|---|---|
+| `task` | `auto` | `auto`, `binary`, `multiclass`, `regression` | What kind of prediction to make. `auto` infers it from the target (see [03 Stages](03_stages.md#stage-2b-task-detection-drops-and-leakage-screening)) |
+| `drop_columns` | `[]` | column names | Columns removed before anything else. Use for fields known only after the outcome |
+
+### `leakage`
+
+| Key | Default | Range | What it does |
+|---|---|---|---|
+| `action` | `drop` | `drop`, `warn` | `drop` removes flagged columns. `warn` reports them and keeps them |
+| `threshold` | `0.95` | 0.5–1.0 | A column whose score alone reaches this is flagged as a leak |
+| `warn_threshold` | `0.85` | 0.5–1.0 | Columns at or above this, but below `threshold`, are listed for manual review only |
+
+Scores are the task metric (AUC for classification, R² for regression), measured on training rows.
+
 ## `cleaning`
 
 | Key | Default | Range | What it does |
@@ -25,7 +42,7 @@ Unknown keys are rejected with an error, so a typo such as `generatons` fails im
 
 | Key | Default | Range | What it does |
 |---|---|---|---|
-| `families` | `[hgb, rf, logreg]` | any of `hgb`, `rf`, `logreg` | Model families the search may use. Removing one saves budget |
+| `families` | `[hgb, rf, logreg, ridge, mlp]` | any of `hgb`, `rf`, `logreg`, `ridge`, `mlp` | Model families the search may use. Families that do not support the task are skipped (`logreg` for classification, `ridge` for regression). Removing one saves budget |
 | `population` | `16` | 4–100 | Candidates per generation |
 | `generations` | `4` | 1–50 | Generations to run before stopping (unless time runs out first) |
 | `elite` | `4` | 1–population | Best candidates kept as parents each generation. Also the minimum number promoted to full data each generation |
