@@ -1,0 +1,28 @@
+# Default configuration. Every key here maps to a field in src/automl/config.py.
+# See docs/05_configuration.md for what each value does and how to tune it.
+
+target: null          # column to predict; can also be passed as --target on the CLI
+seed: 42
+test_size: 0.2        # fraction of rows held out for the final, untouched test score
+cv_folds: 5
+
+cleaning:
+  outlier_k: 3.0              # winsorise numeric values beyond k * IQR (fit on train only)
+  high_cardinality: 20        # categoricals with more levels use target encoding
+  redundancy_threshold: 0.95  # drop a feature if |Spearman| with a more relevant one >= this
+
+search:
+  families: [hgb, rf, logreg]
+  population: 16
+  generations: 4
+  elite: 4
+  min_fraction: 0.2           # row fraction used for cheap screening
+  eta: 3                      # successive-halving factor: top 1/eta promoted to full data
+  time_budget_seconds: 900
+  use_aco: true
+  aco_ants: 8
+  aco_iterations: 6
+  aco_evaporation: 0.2
+  aco_alpha: 1.0
+  aco_beta: 2.0
+  ensemble_size: 5
